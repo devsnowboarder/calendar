@@ -1,17 +1,23 @@
 import os.path
 import csv
 import glob
+import hashlib
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 
 def batch_callback(request_id, response, exception):
     if exception is not None:
-        print(f"Error creating event: {exception}")
+        # Catch the 409 Conflict error which indicates the event ID already exists
+        if isinstance(exception, HttpError) and exception.resp.status == 409:
+            print(f"Event skipped (already exists): Request ID {request_id}")
+        else:
+            print(f"Error creating event: {exception}")
     else:
         print(f"Event created: {response.get('summary')} | Link: {response.get('htmlLink')}")
 
@@ -49,7 +55,12 @@ def main():
                 csv_reader = csv.DictReader(file)
 
                 for row in csv_reader:
+                    # Generate a deterministic ID based on summary and start time
+                    unique_string = f"{row['summary']}_{row['start_datetime']}".encode('utf-8')
+                    event_id = hashlib.sha256(unique_string).hexdigest()
+
                     event = {
+                        'id': event_id,
                         'summary': row['summary'],
                         'location': row['location'],
                         'description': row['description'],
@@ -75,7 +86,8 @@ def main():
                 batch.execute()
                 batch = service.new_batch_http_request(callback=batch_callback)
 
-        if len(events_to_create) % 20 != 0:
+        # Fixed logic from modulo 20 to modulo 10 to match the batch size
+        if len(events_to_create) % 10 != 0:
             batch.execute()
 
         print("All events processed.")
