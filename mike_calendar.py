@@ -71,7 +71,7 @@ def main():
         for i, event in enumerate(events_to_create):
             batch.add(service.events().insert(calendarId='primary', body=event))
 
-            if (i + 1) % 10 == 0:
+            if (i + 1) % 20 == 0:
                 batch.execute()
                 batch = service.new_batch_http_request(callback=batch_callback)
 
