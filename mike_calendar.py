@@ -87,7 +87,7 @@ def main():
                 batch = service.new_batch_http_request(callback=batch_callback)
 
         # Fixed logic from modulo 20 to modulo 10 to match the batch size
-        if len(events_to_create) % 10 != 0:
+        if len(events_to_create) % 20 != 0:
             batch.execute()
 
         print("All events processed.")
